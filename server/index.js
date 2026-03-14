@@ -12,6 +12,8 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:3000',
+    'https://campus-complaint-system-iota.vercel.app',
+    'https://campus-complaint-system-git-main-chandu6863s-projects.vercel.app',
     process.env.CLIENT_URL
   ],
   credentials: true
