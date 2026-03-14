@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://campus-complaint-backend.onrender.com/api/:path*"
+    }
+  ]
+}
