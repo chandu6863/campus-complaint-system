@@ -21,18 +21,31 @@ const s = {
   td:     { padding: '0.95rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' },
   tname:  { color: '#e2e0ff', fontWeight: '600', fontSize: '0.88rem', marginBottom: '0.15rem' },
   tmeta:  { color: '#64748b', fontSize: '0.76rem' },
-  actBtn: { padding: '0.38rem 0.85rem', borderRadius: '7px', border: '1px solid rgba(139,92,246,0.28)', background: 'rgba(139,92,246,0.1)', color: '#a78bfa', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '500' },
+  actBtn: (locked) => ({ padding: '0.38rem 0.85rem', borderRadius: '7px', border: `1px solid ${locked ? 'rgba(255,255,255,0.08)' : 'rgba(139,92,246,0.28)'}`, background: locked ? 'rgba(255,255,255,0.04)' : 'rgba(139,92,246,0.1)', color: locked ? '#64748b' : '#a78bfa', cursor: locked ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: '500' }),
   overlay:{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' },
   modal:  { background: '#111120', border: '1px solid rgba(139,92,246,0.28)', borderRadius: '20px', padding: '2rem', width: '100%', maxWidth: '480px' },
   mT:     { fontSize: '1.2rem', fontWeight: '700', color: '#e2e0ff', margin: '0 0 0.5rem' },
-  mSub:   { color: '#94a3b8', fontSize: '0.86rem', margin: '0 0 1.5rem' },
+  mSub:   { color: '#94a3b8', fontSize: '0.86rem', margin: '0 0 0.5rem' },
+  locked: { background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', padding: '0.6rem 1rem', color: '#f87171', fontSize: '0.82rem', marginBottom: '1.25rem' },
   lbl:    { display: 'block', color: '#94a3b8', fontSize: '0.76rem', fontWeight: '600', marginBottom: '0.38rem', textTransform: 'uppercase', letterSpacing: '0.5px' },
   sel:    { width: '100%', padding: '0.68rem 1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15,15,28,0.95)', color: '#e2e0ff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box', marginBottom: '1rem' },
+  selLocked: { width: '100%', padding: '0.68rem 1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.02)', color: '#64748b', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box', marginBottom: '1rem', cursor: 'not-allowed' },
   ta:     { width: '100%', padding: '0.68rem 1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e0ff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box', marginBottom: '1rem', resize: 'vertical', minHeight: '78px' },
   btnRow: { display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' },
   save:   { padding: '0.62rem 1.5rem', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg,#8b5cf6,#6366f1)', color: '#fff', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer' },
+  saveLocked: { padding: '0.62rem 1.5rem', borderRadius: '10px', border: 'none', background: 'rgba(255,255,255,0.06)', color: '#64748b', fontSize: '0.9rem', fontWeight: '600', cursor: 'not-allowed' },
   cancel: { padding: '0.62rem 1.5rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#94a3b8', fontSize: '0.9rem', cursor: 'pointer' },
 }
+
+// Status flow rules
+const allowedNext = {
+  'pending':     ['pending', 'in-progress', 'rejected'],
+  'in-progress': ['in-progress', 'resolved', 'rejected'],
+  'resolved':    ['resolved'],
+  'rejected':    ['rejected'],
+}
+
+const isLocked = (status) => status === 'resolved' || status === 'rejected'
 
 export default function AdminDashboard() {
   const navigate                    = useNavigate()
@@ -65,6 +78,7 @@ export default function AdminDashboard() {
   }
 
   const handleSave = async () => {
+    if (isLocked(modal.status)) return
     setSaving(true)
     try { await complaintService.updateStatus(modal._id, upd); setModal(null); fetchAll() } catch {}
     setSaving(false)
@@ -87,22 +101,89 @@ export default function AdminDashboard() {
           <div style={s.modal} onClick={e => e.stopPropagation()}>
             <h2 style={s.mT}>Update Complaint</h2>
             <p style={s.mSub}>{modal.title}</p>
-            <div><label style={s.lbl}>Status</label>
-              <select style={s.sel} value={upd.status} onChange={e => setUpd({ ...upd, status: e.target.value })}>
-                {['pending','in-progress','resolved','rejected'].map(v => (
-                  <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>
-                ))}
-              </select></div>
-            <div><label style={s.lbl}>Assign to Staff</label>
-              <select style={s.sel} value={upd.assignedTo} onChange={e => setUpd({ ...upd, assignedTo: e.target.value })}>
+
+            {/* Lock warning */}
+            {isLocked(modal.status) && (
+              <div style={s.locked}>
+                🔒 This complaint is <strong>{modal.status}</strong> and cannot be changed.
+              </div>
+            )}
+
+            {/* Status dropdown */}
+            <div>
+              <label style={s.lbl}>Status</label>
+              <select
+                style={isLocked(modal.status) ? s.selLocked : s.sel}
+                value={upd.status}
+                disabled={isLocked(modal.status)}
+                onChange={e => setUpd({ ...upd, status: e.target.value })}
+              >
+                {['pending', 'in-progress', 'resolved', 'rejected'].map(v => {
+                  const disabled = !allowedNext[modal.status]?.includes(v)
+                  return (
+                    <option
+                      key={v}
+                      value={v}
+                      disabled={disabled}
+                      style={{
+                        color: disabled ? '#444' : '#e2e0ff',
+                        background: '#111120'
+                      }}
+                    >
+                      {v.charAt(0).toUpperCase() + v.slice(1)}
+                      {disabled ? ' (not allowed)' : ''}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+
+            {/* Assign to staff */}
+            <div>
+              <label style={s.lbl}>Assign to Staff</label>
+              <select
+                style={isLocked(modal.status) ? s.selLocked : s.sel}
+                value={upd.assignedTo}
+                disabled={isLocked(modal.status)}
+                onChange={e => setUpd({ ...upd, assignedTo: e.target.value })}
+              >
                 <option value="">— Unassigned —</option>
-                {staff.map(u => <option key={u._id} value={u._id}>{u.name} ({u.role})</option>)}
-              </select></div>
-            <div><label style={s.lbl}>Admin Note</label>
-              <textarea style={s.ta} value={upd.adminNote} onChange={e => setUpd({ ...upd, adminNote: e.target.value })} placeholder="Add a note visible to the student…" /></div>
+                {staff.map(u => (
+                  <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Admin note */}
+            <div>
+              <label style={s.lbl}>Admin Note</label>
+              <textarea
+                style={{
+                  ...s.ta,
+                  cursor: isLocked(modal.status) ? 'not-allowed' : 'text',
+                  opacity: isLocked(modal.status) ? 0.5 : 1
+                }}
+                value={upd.adminNote}
+                disabled={isLocked(modal.status)}
+                onChange={e => setUpd({ ...upd, adminNote: e.target.value })}
+                placeholder="Add a note visible to the student…"
+              />
+            </div>
+
+            {/* Buttons */}
             <div style={s.btnRow}>
-              <button style={s.cancel} onClick={() => setModal(null)}>Cancel</button>
-              <button style={s.save} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button>
+              <button style={s.cancel} onClick={() => setModal(null)}>
+                Cancel
+              </button>
+              <button
+                style={isLocked(modal.status) ? s.saveLocked : s.save}
+                onClick={handleSave}
+                disabled={saving || isLocked(modal.status)}
+              >
+                {isLocked(modal.status)
+                  ? '🔒 Status Locked'
+                  : saving ? 'Saving…' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </div>
@@ -160,13 +241,22 @@ export default function AdminDashboard() {
                   <td style={{ ...s.td, color: '#64748b', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                     {new Date(c.createdAt).toLocaleDateString()}
                   </td>
-                  <td style={s.td}><button style={s.actBtn} onClick={() => openModal(c)}>Update</button></td>
+                  <td style={s.td}>
+                    <button
+                      style={s.actBtn(isLocked(c.status))}
+                      onClick={() => openModal(c)}
+                    >
+                      {isLocked(c.status) ? '🔒 Locked' : 'Update'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No complaints found.</div>
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+              No complaints found.
+            </div>
           )}
         </div>
       </div>
