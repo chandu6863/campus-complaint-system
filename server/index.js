@@ -11,7 +11,7 @@ const app = express();
 
 app.use(cors({
   origin: [
-    'http://localhost:3000',
+    'http://localhost:5173',
     'https://campus-complaint-system-iota.vercel.app',
     'https://campus-complaint-system-git-main-chandu6863s-projects.vercel.app',
     process.env.CLIENT_URL
