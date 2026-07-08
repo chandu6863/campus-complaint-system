@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
       fetchMe()
     } else {
       setLoading(false)
@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchMe = async () => {
     try {
-      const { data } = await axios.get('/api/auth/me')
+      const { data } = await api.get('/auth/me')
       setUser(data.user)
     } catch {
       logout()
@@ -35,24 +35,24 @@ export const AuthProvider = ({ children }) => {
   }
 
   const login = async (email, password) => {
-    const { data } = await axios.post('/api/auth/login', { email, password })
+    const { data } = await api.post('/auth/login', { email, password })
     localStorage.setItem('token', data.token)
-    axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+    api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
     setUser(data.user)
     return data.user
   }
 
   const register = async (formData) => {
-    const { data } = await axios.post('/api/auth/register', formData)
+    const { data } = await api.post('/auth/register', formData)
     localStorage.setItem('token', data.token)
-    axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+    api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
     setUser(data.user)
     return data.user
   }
 
   const logout = () => {
     localStorage.removeItem('token')
-    delete axios.defaults.headers.common['Authorization']
+    delete api.defaults.headers.common['Authorization']
     setUser(null)
   }
 
